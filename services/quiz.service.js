@@ -140,3 +140,95 @@ Rules:
     throw error;
   }
 }
+
+export async function generateQuizWithFeedback(answers, prompt) {
+  try {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash-exp",
+      generationConfig: {
+        maxOutputTokens: 4000,
+        temperature: 0.7,
+        responseMimeType: "application/json",
+      },
+    });
+
+    const feedbackPrompt = `
+You are an expert educator and quiz evaluator. Analyze the quiz answers provided below and give detailed feedback.
+
+Quiz Topic: ${prompt}
+
+User's Answers:
+${JSON.stringify(answers, null, 2)}
+
+Provide comprehensive feedback in this exact JSON format:
+{
+  "overallFeedback": "A comprehensive summary of the user's performance (150-200 words)",
+  "score": 85,
+  "totalQuestions": ${answers.length},
+  "correctAnswers": 8,
+  "percentage": 80.0,
+  "strengths": [
+    "Strong understanding of core concepts",
+    "Good attention to detail in specific areas"
+  ],
+  "weakAreas": [
+    "Need to review advanced topics",
+    "Misunderstanding of specific concepts"
+  ],
+  "questionFeedback": [
+    {
+      "questionNumber": 1,
+      "question": "The actual question text",
+      "userAnswer": "User's selected answer",
+      "correctAnswer": "The correct answer",
+      "isCorrect": true,
+      "explanation": "Detailed explanation of why this answer is correct/incorrect and key concepts"
+    }
+  ],
+  "recommendations": [
+    {
+      "topic": "Specific topic to improve",
+      "priority": "high",
+      "description": "What to focus on and why"
+    }
+  ],
+  "nextSteps": [
+    "Specific actionable advice 1",
+    "Specific actionable advice 2",
+    "Specific actionable advice 3"
+  ]
+}
+
+Guidelines:
+- Be specific and constructive
+- Provide detailed explanations for each question
+- Calculate accurate scores and percentages
+- Identify patterns in mistakes
+- Give actionable recommendations
+- Be encouraging while pointing out areas for improvement
+`;
+
+    const result = await model.generateContent(feedbackPrompt);
+    const response = result.response;
+    const text = response.text();
+
+    let cleanText = text.trim();
+    if (cleanText.startsWith("```json")) {
+      cleanText = cleanText.replace(/```json\n?/g, "").replace(/```\n?$/g, "");
+    } else if (cleanText.startsWith("```")) {
+      cleanText = cleanText.replace(/```\n?/g, "");
+    }
+    cleanText = cleanText.trim();
+
+    const feedbackData = JSON.parse(cleanText);
+
+    if (!feedbackData.overallFeedback || feedbackData.score === undefined) {
+      throw new Error("Invalid AI feedback response structure");
+    }
+
+    return feedbackData;
+  } catch (error) {
+    console.error("Error generating quiz feedback:", error);
+    throw error;
+  }
+}

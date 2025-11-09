@@ -23,6 +23,7 @@ model User {
   
   interviews    Interview[]
   quizResults   QuizResult[]
+  quizSets      QuizSet[]
 }
 
 model Interview {
@@ -97,24 +98,56 @@ model message {
   createdAt DateTime @default(now())
 }
 
-model Quiz {
-  id         Int      @id @default(autoincrement())
-  question    String
-  options     String[] 
-  answer      String
-  createdAt   DateTime @default(now())
+model QuizSet {
+  id                String         @id @default(cuid())
+  title             String
+  topic             String
+  difficulty        String         @default("medium")
+  numberOfQuestions Int
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  userId            String?
+  user              User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions         QuizQuestion[]
+  results           QuizResult[]
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
+model QuizQuestion {
+  id        String   @id @default(cuid())
+  question  String   @db.Text
+  options   Json     // Array of options
+  answer    String   // Correct answer
+  order     Int      // Question order
+  createdAt DateTime @default(now())
+
+  quizSetId String
+  quizSet   QuizSet  @relation(fields: [quizSetId], references: [id], onDelete: Cascade)
+
+  @@index([quizSetId])
+}
+
+// Update your existing QuizResult model
 model QuizResult {
-  id         Int      @id @default(autoincrement())
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
-  category   String
-  subtopics  String[]
-  score      Int
-  total      Int
-  percentage Float
-  level      String
-  createdAt  DateTime @default(now())
-}  
+  id             String   @id @default(cuid())
+  score          Int
+  total          Int
+  percentage     Float
+  level          String
+  category       String?
+  subtopics      String[]
+  timeTaken      Int?     @default(0)
+  answers        Json?
+  createdAt      DateTime @default(now())
+
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizSetId String?
+  quizSet   QuizSet? @relation(fields: [quizSetId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([quizSetId])
+}

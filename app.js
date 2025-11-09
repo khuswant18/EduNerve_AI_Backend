@@ -9,7 +9,7 @@ const app = express();
 const corsOptions = {
   origin: [
     'http://localhost:5173',
-    'http://localhost:5174',
+    'http://localhost:5176',
     'http://localhost:3000',
     'https://accounts.google.com'
   ],
@@ -22,7 +22,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Security headers for OAuth
 app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
   res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
@@ -51,6 +50,11 @@ app.get("/", (req, res) => {
       startInterview: "POST /api/start-interview",
     },
   });
+});
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
 app.use(notFoundHandler);
 app.use(errorHandler);

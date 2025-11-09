@@ -8,14 +8,21 @@ export const validateInterviewRequest = (req, res, next) => {
     });
   }
 
-  if (!interviewType || !["technical", "behavioral", "mixed"].includes(interviewType)) {
+  if (
+    !interviewType ||
+    !["technical", "behavioral", "mixed"].includes(interviewType)
+  ) {
     return res.status(400).json({
       success: false,
       error: "Interview type must be 'technical', 'behavioral', or 'mixed'",
     });
   }
 
-  if (!technologies || !Array.isArray(technologies) || technologies.length === 0) {
+  if (
+    !technologies ||
+    !Array.isArray(technologies) ||
+    technologies.length === 0
+  ) {
     return res.status(400).json({
       success: false,
       error: "Technologies must be a non-empty array",
@@ -27,6 +34,29 @@ export const validateInterviewRequest = (req, res, next) => {
 
 export const errorHandler = (err, req, res, next) => {
   console.error("Error:", err);
+
+  // Handle Prisma errors
+  if (err.code === "P2002") {
+    return res.status(409).json({
+      success: false,
+      error: "A record with this information already exists",
+    });
+  }
+
+  if (err.code === "P2025") {
+    return res.status(404).json({
+      success: false,
+      error: "Record not found",
+    });
+  }
+
+  // Handle bcrypt errors
+  if (err.name === "Error" && err.message.includes("bcrypt")) {
+    return res.status(500).json({
+      success: false,
+      error: "Authentication error occurred",
+    });
+  }
 
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal Server Error";

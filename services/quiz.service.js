@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import config from "../config/config.js";
-
+console.log("Gemini API Key in quiz.service.js:", config.geminiApiKey);
 const genAI = new GoogleGenerativeAI(config.geminiApiKey);
 
 export async function generateQuizQuestions(prompt, numberOfQuestions = 5) {

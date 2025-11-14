@@ -22,8 +22,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   
   interviews    Interview[]
-  quizResults   QuizResult[]
-  quizSets      QuizSet[]
+  quizzes       Quiz[]
 }
 
 model Interview {
@@ -74,80 +73,14 @@ model Recommendation {
   createdAt     DateTime @default(now())
 }
 
-model Resource {
-  id          String   @id @default(uuid())
-  category    String  
-  topic       String   
-  subtopic    String?  
-  title       String
-  url         String
-  description String?
-  difficulty  String?  
-  tags        String[] 
+model Quiz {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@index([topic, subtopic])
-  @@index([category])
-}
-
-model message {
-  id        Int      @id @default(autoincrement())
-  content   String
-  createdAt DateTime @default(now())
-}
-
-model QuizSet {
-  id                String         @id @default(cuid())
-  title             String
-  topic             String
-  difficulty        String         @default("medium")
-  numberOfQuestions Int
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-
-  userId            String?
-  user              User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  questions         QuizQuestion[]
-  results           QuizResult[]
-
-  @@index([userId])
-  @@index([createdAt])
-}
-
-model QuizQuestion {
-  id        String   @id @default(cuid())
-  question  String   @db.Text
-  options   Json     // Array of options
-  answer    String   // Correct answer
-  order     Int      // Question order
-  createdAt DateTime @default(now())
-
-  quizSetId String
-  quizSet   QuizSet  @relation(fields: [quizSetId], references: [id], onDelete: Cascade)
-
-  @@index([quizSetId])
-}
-
-// Update your existing QuizResult model
-model QuizResult {
-  id             String   @id @default(cuid())
-  score          Int
-  total          Int
-  percentage     Float
-  level          String
-  category       String?
-  subtopics      String[]
-  timeTaken      Int?     @default(0)
-  answers        Json?
-  createdAt      DateTime @default(now())
-
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  quizSetId String?
-  quizSet   QuizSet? @relation(fields: [quizSetId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([quizSetId])
+  title         String
+  questions     Json
+  correctAnswers Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

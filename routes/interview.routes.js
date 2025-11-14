@@ -7,7 +7,7 @@ import {
   healthCheck 
 } from "../controllers/interview.controller.js";
 import { validateInterviewRequest } from "../middlewares/validation.middleware.js";
-import { authenticate, optionalAuth } from "../middlewares/auth.middleware.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
 
 const router = express.Router();
 

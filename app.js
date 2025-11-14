@@ -1,9 +1,12 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import routes from "./routes/index.js";
 import { errorHandler, notFoundHandler } from "./middlewares/validation.middleware.js";
 
 const app = express();
+
+app.use(cookieParser());
 
 // CORS configuration for Google OAuth
 const corsOptions = {

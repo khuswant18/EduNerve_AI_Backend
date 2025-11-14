@@ -1,1 +1,0 @@
-    console.log("Generated quiz data:", quizData);

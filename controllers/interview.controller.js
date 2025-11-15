@@ -1,25 +1,28 @@
 import { generateInterviewPrompt } from "../services/gemini.service.js";
 import { buildInterviewConfig } from "../utils/interview.utils.js";
-import { generateInterviewFeedback, generateResourceRecommendations } from "../services/feedback.service.js";
+import {
+  generateInterviewFeedback,
+  generateResourceRecommendations,
+} from "../services/feedback.service.js";
 import prisma from "../db/config.js";
 import config from "../config/config.js";
 
 export const startInterview = async (req, res, next) => {
-  try {  
+  try {
     const { role, interviewType, technologies } = req.body;
-    const userId = req.user?.userId; 
+    const userId = req.user?.userId;
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: "Authentication required to start an interview"
+        error: "Authentication required to start an interview",
       });
-    } 
+    }
 
     console.log("Generating interview prompt with Gemini for:", {
       role,
       interviewType,
-      technologies, 
+      technologies,
     });
 
     const systemPrompt = await generateInterviewPrompt({
@@ -36,8 +39,8 @@ export const startInterview = async (req, res, next) => {
         role,
         interviewType,
         technologies,
-        status: "in_progress"
-      }
+        status: "in_progress",
+      },
     });
 
     console.log("Interview created with ID:", interview.id);
@@ -53,7 +56,7 @@ export const startInterview = async (req, res, next) => {
       interviewId: interview.id,
       systemPrompt,
       interviewConfig,
-    }); 
+    });
   } catch (error) {
     console.error("Error in startInterview controller:", error);
     next(error);
@@ -63,22 +66,38 @@ export const startInterview = async (req, res, next) => {
 export const completeInterview = async (req, res, next) => {
   try {
     const { interviewId, transcript, duration } = req.body;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Authentication required to complete interview",
+      });
+    }
 
     if (!interviewId) {
       return res.status(400).json({
         success: false,
-        error: "Interview ID is required"
+        error: "Interview ID is required",
       });
     }
 
     const interview = await prisma.interview.findUnique({
-      where: { id: interviewId }
+      where: { id: interviewId },
     });
 
     if (!interview) {
       return res.status(404).json({
         success: false,
-        error: "Interview not found"
+        error: "Interview not found",
+      });
+    }
+
+    // Check if user has permission to complete this interview
+    if (interview.userId !== userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized to complete this interview",
       });
     }
 
@@ -87,7 +106,7 @@ export const completeInterview = async (req, res, next) => {
       role: interview.role,
       interviewType: interview.interviewType,
       technologies: interview.technologies,
-      transcript: transcript || []
+      transcript: transcript || [],
     });
 
     console.log("Generating resource recommendations...");
@@ -111,12 +130,12 @@ export const completeInterview = async (req, res, next) => {
         problemSolvingScore: feedbackData.problemSolvingScore,
         overallScore: feedbackData.overallScore,
         weakAreas: feedbackData.weakAreas || [],
-        strengths: feedbackData.strengths || []
-      }
+        strengths: feedbackData.strengths || [],
+      },
     });
 
     const savedRecommendations = await Promise.all(
-      recommendations.map(rec =>
+      recommendations.map((rec) =>
         prisma.recommendation.create({
           data: {
             interviewId,
@@ -125,8 +144,8 @@ export const completeInterview = async (req, res, next) => {
             title: rec.title,
             url: rec.url,
             description: rec.description || "",
-            priority: rec.priority || 5
-          }
+            priority: rec.priority || 5,
+          },
         })
       )
     );
@@ -136,7 +155,7 @@ export const completeInterview = async (req, res, next) => {
       message: "Interview completed and analyzed successfully",
       interview: updatedInterview,
       feedback: feedbackData,
-      recommendations: savedRecommendations
+      recommendations: savedRecommendations,
     });
   } catch (error) {
     console.error("Error in completeInterview:", error);
@@ -147,35 +166,51 @@ export const completeInterview = async (req, res, next) => {
 export const getInterview = async (req, res, next) => {
   try {
     const { interviewId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Authentication required to view interview",
+      });
+    }
 
     const interview = await prisma.interview.findUnique({
       where: { id: interviewId },
       include: {
         recommendations: {
           orderBy: {
-            priority: 'desc'
-          }
+            priority: "desc",
+          },
         },
         user: {
           select: {
             id: true,
             name: true,
-            email: true
-          }
-        }
-      }
+            email: true,
+          },
+        },
+      },
     });
 
     if (!interview) {
       return res.status(404).json({
         success: false,
-        error: "Interview not found"
+        error: "Interview not found",
+      });
+    }
+
+    // Check if user has permission to view this interview
+    if (interview.userId !== userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Unauthorized to view this interview",
       });
     }
 
     res.json({
       success: true,
-      interview
+      interview,
     });
   } catch (error) {
     console.error("Error in getInterview:", error);
@@ -185,25 +220,32 @@ export const getInterview = async (req, res, next) => {
 
 export const getUserInterviews = async (req, res, next) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: "Authentication required to view interviews",
+      });
+    }
 
     const interviews = await prisma.interview.findMany({
       where: { userId },
       include: {
         recommendations: {
           take: 3,
-          orderBy: { priority: 'desc' }
-        }
+          orderBy: { priority: "desc" },
+        },
       },
       orderBy: {
-        startedAt: 'desc'
-      }
+        startedAt: "desc",
+      },
     });
 
     res.json({
       success: true,
       count: interviews.length,
-      interviews
+      interviews,
     });
   } catch (error) {
     console.error("Error in getUserInterviews:", error);

@@ -33,7 +33,15 @@ export const createQuiz = async (req, res) => {
       },
     });
 
-    res.status(201).json({ success: true, data: Data });
+    res.status(201).json({
+      success: true,
+      quiz: {
+        ...Data,
+        questions: JSON.parse(Data.questions),
+        correctAnswers: JSON.parse(Data.correctAnswers),
+      },
+      id: Data.id, // Explicitly return the ID for frontend
+    });
   } catch (err) {
     console.error("Error creating quiz:", err);
     res.status(500).json({ success: false, error: "Internal Server Error" });
@@ -41,59 +49,89 @@ export const createQuiz = async (req, res) => {
 };
 
 export const qetAllQuiz = async (req, res) => {
-    try {
-        const quizzes = await prisma.quiz.findMany();
-        res.status(200).json({ success: true, data: quizzes });
-    } catch (err) {
-        console.error("Error fetching quizzes:", err);
-        res.status(500).json({ success: false, error: "Internal Server Error" });
-    }
-}
+  try {
+    const quizzes = await prisma.quiz.findMany();
+    const parsedQuizzes = quizzes.map((quiz) => ({
+      ...quiz,
+      questions: JSON.parse(quiz.questions),
+      correctAnswers: JSON.parse(quiz.correctAnswers),
+    }));
+    res.status(200).json({ success: true, data: parsedQuizzes });
+  } catch (err) {
+    console.error("Error fetching quizzes:", err);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+};
 
 export const correctQuiz = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { option1, option2, option3, option4 } = req.body;
-        const quiz = await prisma.quiz.findUnique({
-            where: { id : id }
-        });
+  try {
+    const { id } = req.params;
+    const { answers } = req.body; // frontend sends answers: []
 
-        if (!quiz) {
-            return res.status(404).json({ success: false, error: "Quiz not found" });
-        }
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: id },
+    });
 
-        const correctAnswers = JSON.parse(quiz.correctAnswers);
-        const userAnswers = [option1, option2, option3, option4];
-
-        let score = 0;
-        for (let i = 0; i < correctAnswers.length; i++) {
-            if (correctAnswers[i] === userAnswers[i]) {
-                score++;
-            }
-        }
-        
-        res.status(200).json({ success: true, score: score });
-    } catch (err) {
-        console.error("Error correcting quiz:", err);
-        res.status(500).json({ success: false, error: "Internal Server Error" });
+    if (!quiz) {
+      return res.status(404).json({ success: false, error: "Quiz not found" });
     }
-}
+
+    const correctAnswers = JSON.parse(quiz.correctAnswers);
+    let score = 0;
+
+    for (let i = 0; i < correctAnswers.length; i++) {
+      if (correctAnswers[i] === answers[i]) score++;
+    }
+
+    res.status(200).json({ success: true, score });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+};
 
 export const deleteQuiz = async (req, res) => {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-        const quiz = await prisma.quiz.delete({
-            where: { id: id }
-        });
+    const quiz = await prisma.quiz.delete({
+      where: { id: id },
+    });
 
-        if (!quiz) {
-            return res.status(404).json({ success: false, error: "Quiz not found" });
-        }
-
-        res.status(200).json({ success: true, message: "Quiz deleted successfully" });
-    } catch (err) {
-        console.error("Error deleting quiz:", err);
-        res.status(500).json({ success: false, error: "Internal Server Error" });
+    if (!quiz) {
+      return res.status(404).json({ success: false, error: "Quiz not found" });
     }
-}
+
+    res
+      .status(200)
+      .json({ success: true, message: "Quiz deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting quiz:", err);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+};
+
+export const getQuizById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: id },
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ success: false, error: "Quiz not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...quiz,
+        questions: JSON.parse(quiz.questions),
+        correctAnswers: JSON.parse(quiz.correctAnswers),
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching quiz by ID:", err);
+    res.status(500).json({ success: false, error: "Internal Server Error" });
+  }
+};
